@@ -8,6 +8,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Multi-architecture image**: the published `ghcr.io/kilotronic/awth` image now
+  ships both `linux/amd64` and `linux/arm64`, so it runs natively on Apple Silicon
+  and other arm64 hosts instead of under emulation. CI builds both platforms via
+  QEMU + Buildx.
 - **Configurable domain allowlist** (`AWTH_ALLOWED_DOMAINS`): a comma-separated
   list of hostnames allowed as `redirect_uri` and CORS origins. Defaults to `*`
   (allow any) so the tool still works out of the box; when set, `/authorize`
