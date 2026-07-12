@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  oauth-server:
+    build: .
+    ports:
+      - "4999:4999"
+    environment:
+      - FLASK_ENV=development
+      # Enable the Werkzeug reloader/debugger for local development only.
+      - AWTH_DEBUG=1
+    volumes:
+      # Mount for live code reload during development
+      - ./app.py:/app/app.py
+      - ./templates:/app/templates
+    restart: unless-stopped

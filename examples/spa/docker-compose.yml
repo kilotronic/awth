@@ -1,0 +1,28 @@
+# Runs the whole demo with one command:
+#
+#     docker compose up --build
+#
+# then open http://localhost:8080 and click "Log in with awth".
+#
+# Two services on two different origins (localhost:4999 and localhost:8080),
+# which is what exercises awth's cross-origin PKCE + CORS path.
+services:
+  awth:
+    build: ../.. # the awth server, built from this repo
+    ports:
+      - "4999:4999"
+    # Default AWTH_ALLOWED_DOMAINS is "*", so the localhost SPA works as-is.
+    # To see the allowlist in action, uncomment:
+    # environment:
+    #   - AWTH_ALLOWED_DOMAINS=localhost
+
+  spa-demo:
+    image: python:3.11-slim
+    working_dir: /spa
+    command: python -m http.server 8080
+    volumes:
+      - ./:/spa # serve this directory (index.html)
+    ports:
+      - "8080:8080"
+    depends_on:
+      - awth

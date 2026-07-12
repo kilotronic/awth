@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>awth SPA demo — Authorization Code + PKCE</title>
+  <style>
+    :root {
+      --bg: #f4f5f8;
+      --card: #fff;
+      --ink: #1c2430;
+      --muted: #6b7280;
+      --line: #e1e4e8;
+      --brand: #667eea;
+      --brand2: #764ba2;
+      --ok: #1a7f5a;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--ink); line-height: 1.5;
+      padding: 32px 16px;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; }
+    header h1 { font-size: 24px; }
+    header p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 20px; margin-top: 20px;
+    }
+    label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+    input {
+      width: 100%; padding: 10px 12px; border: 2px solid var(--line);
+      border-radius: 6px; font-size: 14px;
+    }
+    input:focus { outline: none; border-color: var(--brand); }
+    button {
+      margin-top: 18px; padding: 12px 18px; border: none; border-radius: 6px;
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand2) 100%);
+      color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    button.secondary { background: #eceef3; color: var(--ink); }
+    button:hover { filter: brightness(1.05); }
+    .steps { margin-top: 8px; }
+    .step {
+      border: 1px solid var(--line); border-radius: 8px; margin-top: 12px;
+      overflow: hidden;
+    }
+    .step-head {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      background: #fafbfc; font-weight: 600; font-size: 14px;
+    }
+    .badge {
+      width: 22px; height: 22px; border-radius: 50%; flex: none;
+      display: grid; place-items: center; font-size: 12px; color: #fff;
+      background: var(--muted);
+    }
+    .step.done .badge { background: var(--ok); }
+    .step-body { padding: 0 16px 14px; }
+    pre {
+      background: #0f1420; color: #d7e0f0; border-radius: 6px; padding: 12px;
+      font-size: 12.5px; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+    }
+    .error {
+      background: #fff3f3; border-left: 4px solid #d9534f; color: #a33;
+      padding: 12px 16px; border-radius: 6px; margin-top: 16px; font-size: 14px;
+    }
+    .hint { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    a { color: var(--brand); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🍄 awth SPA demo</h1>
+      <p>Authorization Code flow with PKCE (S256), entirely in the browser.</p>
+    </header>
+
+    <!-- Config / start -->
+    <div class="card" id="config-card">
+      <label for="base">awth server base URL</label>
+      <input id="base" value="http://localhost:4999">
+      <label for="client">client_id</label>
+      <input id="client" value="spa-demo">
+      <label for="scope">scope</label>
+      <input id="scope" value="openid email profile">
+      <button id="login-btn">Log in with awth →</button>
+      <p class="hint">
+        This page is its own <code>redirect_uri</code>. Serve it on a fixed port
+        (see <code>examples/spa/README.md</code>) so the redirect comes back here.
+      </p>
+    </div>
+
+    <div id="error-slot"></div>
+
+    <!-- Flow visualization -->
+    <div class="card steps" id="steps-card" style="display:none">
+      <div class="step" id="s1">
+        <div class="step-head"><span class="badge">1</span> Redirect to /authorize</div>
+        <div class="step-body"><pre id="s1-body"></pre></div>
+      </div>
+      <div class="step" id="s2">
+        <div class="step-head"><span class="badge">2</span> Authorization code received</div>
+        <div class="step-body"><pre id="s2-body"></pre></div>
+      </div>
+      <div class="step" id="s3">
+        <div class="step-head"><span class="badge">3</span> POST /token (PKCE exchange)</div>
+        <div class="step-body"><pre id="s3-body"></pre></div>
+      </div>
+      <div class="step" id="s4">
+        <div class="step-head"><span class="badge">4</span> GET /userinfo</div>
+        <div class="step-body"><pre id="s4-body"></pre></div>
+      </div>
+      <button class="secondary" id="reset-btn">Start over</button>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const STORE_KEY = "awth_spa_demo";
+    const redirectUri = location.origin + location.pathname;
+
+    const $ = (id) => document.getElementById(id);
+
+    function showError(msg) {
+      $("error-slot").innerHTML = `<div class="error">${msg}</div>`;
+    }
+
+    function setStep(n, text) {
+      $("steps-card").style.display = "block";
+      $(`s${n}-body`).textContent = text;
+      $(`s${n}`).classList.add("done");
+    }
+
+    // --- PKCE helpers ---
+    function randomString(len) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+      const bytes = crypto.getRandomValues(new Uint8Array(len));
+      return Array.from(bytes, (b) => chars[b % chars.length]).join("");
+    }
+
+    function base64url(bytes) {
+      let str = "";
+      for (const b of new Uint8Array(bytes)) str += String.fromCharCode(b);
+      return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    async function s256(verifier) {
+      const digest = await crypto.subtle.digest(
+        "SHA-256", new TextEncoder().encode(verifier)
+      );
+      return base64url(digest);
+    }
+
+    // --- Step 1: kick off the flow ---
+    async function startLogin() {
+      const base = $("base").value.replace(/\/$/, "");
+      const clientId = $("client").value;
+      const scope = $("scope").value;
+
+      const verifier = randomString(64);
+      const challenge = await s256(verifier);
+      const state = randomString(24);
+
+      sessionStorage.setItem(STORE_KEY, JSON.stringify({ base, clientId, verifier, state }));
+
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: "code",
+        scope,
+        state,
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+      });
+      location.assign(`${base}/authorize?${params}`);
+    }
+
+    // --- Steps 2-4: handle the redirect back ---
+    async function handleCallback(params) {
+      const saved = JSON.parse(sessionStorage.getItem(STORE_KEY) || "null");
+      $("config-card").style.display = "none";
+
+      if (params.get("error")) {
+        showError(`Authorization error: ${params.get("error")} — ${params.get("error_description") || ""}`);
+        return;
+      }
+      if (!saved) {
+        showError("No saved PKCE state found. Start the flow from this page.");
+        return;
+      }
+      if (params.get("state") !== saved.state) {
+        showError("State mismatch — possible CSRF. Aborting.");
+        return;
+      }
+
+      const code = params.get("code");
+      setStep(1, `redirect_uri = ${redirectUri}\ncode_challenge_method = S256`);
+      setStep(2, `code = ${code}\nstate verified ✓`);
+
+      // Step 3: exchange the code for a token (cross-origin fetch — needs CORS)
+      const body = new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: saved.clientId,
+        code_verifier: saved.verifier,
+      });
+      const tokenRes = await fetch(`${saved.base}/token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      const tokenJson = await tokenRes.json();
+      if (!tokenRes.ok) {
+        showError(`Token exchange failed (${tokenRes.status}): ${JSON.stringify(tokenJson)}`);
+        return;
+      }
+      setStep(3, JSON.stringify(tokenJson, null, 2));
+
+      // Step 4: use the access token to fetch userinfo
+      const userRes = await fetch(`${saved.base}/userinfo`, {
+        headers: { Authorization: `Bearer ${tokenJson.access_token}` },
+      });
+      const userJson = await userRes.json();
+      if (!userRes.ok) {
+        showError(`userinfo failed (${userRes.status}): ${JSON.stringify(userJson)}`);
+        return;
+      }
+      setStep(4, JSON.stringify(userJson, null, 2));
+    }
+
+    function reset() {
+      sessionStorage.removeItem(STORE_KEY);
+      location.assign(redirectUri);
+    }
+
+    // --- Wire up ---
+    $("login-btn").addEventListener("click", () => startLogin().catch((e) => showError(e.message)));
+    $("reset-btn").addEventListener("click", reset);
+
+    const query = new URLSearchParams(location.search);
+    if (query.get("code") || query.get("error")) {
+      handleCallback(query).catch((e) => showError(e.message));
+    }
+  </script>
+</body>
+</html>

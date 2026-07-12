@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  oauth-server:
+    image: awth:local
+    ports:
+      - "4999:4999"
+    environment:
+      - FLASK_ENV=development
+    restart: unless-stopped
