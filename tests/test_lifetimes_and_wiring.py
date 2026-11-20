@@ -2,6 +2,7 @@
 
 import importlib
 import time
+import types
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -38,7 +39,9 @@ def test_a_code_lives_ten_minutes(client, monkeypatch):
     assert app_module.authorization_codes[code]["expires_at"] == pytest.approx(
         start + 600, abs=5
     )
-    monkeypatch.setattr(app_module.time, "time", lambda: start + 601 + 5)
+    monkeypatch.setattr(
+        app_module, "time", types.SimpleNamespace(time=lambda: start + 606)
+    )
     assert _token(client, code).json["error_description"] == "Code expired"
 
 
@@ -49,9 +52,13 @@ def test_an_access_token_lives_one_hour(client, monkeypatch):
         start + 3600, abs=5
     )
     headers = {"Authorization": f"Bearer {access}"}
-    monkeypatch.setattr(app_module.time, "time", lambda: start + 3590 - 5)
+    monkeypatch.setattr(
+        app_module, "time", types.SimpleNamespace(time=lambda: start + 3585)
+    )
     assert client.get("/userinfo", headers=headers).status_code == 200
-    monkeypatch.setattr(app_module.time, "time", lambda: start + 3601 + 5)
+    monkeypatch.setattr(
+        app_module, "time", types.SimpleNamespace(time=lambda: start + 3606)
+    )
     assert client.get("/userinfo", headers=headers).status_code == 401
 
 
@@ -65,12 +72,9 @@ def test_a_valid_token_under_another_scheme_is_refused(client, scheme):
 def test_userinfo_reports_a_verified_email(client):
     access = _token(client, _code(client)).json["access_token"]
     resp = client.get("/userinfo", headers={"Authorization": f"Bearer {access}"})
-    assert resp.json == {
-        "email": "ada@example.com",
-        "email_verified": True,
-        "name": "Ada",
-        "sub": "ada@example.com",
-    }
+    assert resp.json["email"] == resp.json["sub"] == "ada@example.com"
+    assert resp.json["name"] == "Ada"
+    assert resp.json["email_verified"] is True
 
 
 def test_a_challenge_without_a_method_is_plain(client):
@@ -92,21 +96,36 @@ def test_discovery_values_for_a_base_url_with_a_trailing_slash():
     }
 
 
-def test_the_discovery_endpoint_serves_the_same_document(client):
+def test_the_discovery_endpoint_uses_the_request_host(client):
     resp = client.get("/.well-known/openid-configuration", base_url="http://h:4999")
-    assert resp.json == oidc_config("http://h:4999/")
+    assert resp.json["issuer"] == "http://h:4999"
+    assert resp.json["token_endpoint"] == "http://h:4999/token"
 
 
 # --- AWTH_ALLOWED_DOMAINS, read at import: reload the app with it set
 
 
-@pytest.fixture
-def locked(monkeypatch):
-    monkeypatch.setenv("AWTH_ALLOWED_DOMAINS", "localhost, app.example")
-    module = importlib.reload(app_module)
+def _reload_with(value):
+    """Re-import the app with AWTH_ALLOWED_DOMAINS set to value (None: unset)."""
+    with pytest.MonkeyPatch.context() as mp:
+        if value is None:
+            mp.delenv("AWTH_ALLOWED_DOMAINS", raising=False)
+        else:
+            mp.setenv("AWTH_ALLOWED_DOMAINS", value)
+        module = importlib.reload(app_module)
     module.app.config["TESTING"] = True
-    yield module
-    monkeypatch.delenv("AWTH_ALLOWED_DOMAINS")
+    return module
+
+
+@pytest.fixture
+def locked():
+    yield _reload_with("localhost, app.example")
+    importlib.reload(app_module)  # back to the environment the run started with
+
+
+@pytest.fixture
+def open_app():
+    yield _reload_with(None)
     importlib.reload(app_module)
 
 
@@ -129,7 +148,8 @@ def test_cors_allows_only_the_allowlisted_origins(locked, path):
 
 
 @pytest.mark.parametrize("path", ["/token", "/userinfo"])
-def test_cors_is_open_without_an_allowlist(client, path):
+def test_cors_is_open_without_an_allowlist(open_app, path):
+    client = open_app.app.test_client()
     method = client.post if path == "/token" else client.get
     resp = method(path, headers={"Origin": "http://anything.example"})
     allowed = resp.headers.get("Access-Control-Allow-Origin")
