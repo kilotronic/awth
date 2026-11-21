@@ -11,14 +11,21 @@ requires-python = ">=3.13"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Kilotronic LLC" }]
-keywords = ["oauth2", "oidc", "openid-connect", "mock-server", "testing", "local-development"]
+keywords = [
+  "oauth2",
+  "oidc",
+  "openid-connect",
+  "mock-server",
+  "testing",
+  "local-development",
+]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Software Development :: Testing",
-    "Topic :: Internet :: WWW/HTTP",
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Testing",
+  "Topic :: Internet :: WWW/HTTP",
 ]
 dependencies = []
 
@@ -28,16 +35,13 @@ Repository = "https://github.com/kilotronic/awth"
 Issues = "https://github.com/kilotronic/awth/issues"
 
 [project.optional-dependencies]
-server = [
-    "Flask>=3.1.0",
-    "flask-cors>=4.0.0",
-]
+server = ["Flask>=3.1.0", "flask-cors>=4.0.0"]
 dev = [
-    "awth[server]",
-    "pytest>=9.0",
-    "pytest-cov>=7.0",
-    "pre-commit>=4.0",
-    "ruff>=0.15",
+  "awth[server]",
+  "pytest>=9.0",
+  "pytest-cov>=7.0",
+  "pre-commit>=4.0",
+  "ruff>=0.15",
 ]
 
 [tool.setuptools.packages.find]

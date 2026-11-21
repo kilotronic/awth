@@ -32,6 +32,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **The image runs as an unprivileged user**: the container now runs as `awth`
+  (uid 10001) instead of root. The server only reads its code and templates, so
+  nothing changes for the shipped compose files; a deploy that mounts a writable
+  path into the container needs it writable by uid 10001.
 - `AWTH_HOST` now defaults to **`127.0.0.1`** (loopback) instead of `0.0.0.0`.
   Because there is no safe default `redirect_uri`/CORS allowlist, binding to
   loopback keeps the intentionally-open server unreachable from other machines

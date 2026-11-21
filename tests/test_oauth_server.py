@@ -1,6 +1,6 @@
 import hashlib
 from base64 import urlsafe_b64encode
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
