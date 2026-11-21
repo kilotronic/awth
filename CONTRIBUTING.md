@@ -6,7 +6,7 @@ server. Contributions that keep it small and easy to run are very welcome.
 ## Setup
 
 ```bash
-uv sync --extra dev          # server deps + pytest, coverage, ruff, pre-commit
+uv sync --extra dev          # server deps + pytest, coverage, pre-commit
 uv run pre-commit install    # run the hooks on every commit
 ```
 
@@ -26,10 +26,11 @@ first.
 ## Linting and formatting
 
 ```bash
-ruff check .                 # lint
-ruff format .                # format
+uv run pre-commit run ruff-check --all-files    # lint
+uv run pre-commit run ruff-format --all-files   # format
 ```
 
+ruff comes from the shared kilotronic/lint hooks, so it is the same version on every machine and in CI.
 `pre-commit` runs `ruff`, `ruff-format`, and `pytest` automatically, plus a
 local-image build hook. You can run the full set at any time with:
 
