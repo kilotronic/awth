@@ -18,4 +18,8 @@ ENV AWTH_HOST=0.0.0.0
 
 EXPOSE 4999
 
+# Run as an unprivileged user: the server only reads its code and templates.
+RUN useradd --system --uid 10001 --no-create-home awth
+USER awth
+
 CMD ["python", "app.py"]

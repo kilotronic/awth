@@ -93,7 +93,7 @@ dependencies = [
 
 1. Redirect user to:
 
-```
+```text
 http://localhost:4999/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLBACK&response_type=code&state=RANDOM_STATE
 ```
 
@@ -101,7 +101,7 @@ http://localhost:4999/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLB
 
 2. User is redirected back with authorization code:
 
-```
+```text
 YOUR_CALLBACK?code=AUTHORIZATION_CODE&state=RANDOM_STATE
 ```
 
@@ -129,13 +129,13 @@ Response:
 
 1. Redirect user to:
 
-```
+```text
 http://localhost:4999/authorize?client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLBACK&response_type=token&state=RANDOM_STATE
 ```
 
 1. User is redirected back with token in URL fragment:
 
-```
+```text
 YOUR_CALLBACK#access_token=ACCESS_TOKEN&token_type=Bearer&expires_in=3600&state=RANDOM_STATE
 ```
 
