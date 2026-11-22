@@ -40,7 +40,7 @@ dev = [
   "awth[server]",
   "pytest>=9.0",
   "pytest-cov>=7.0",
-  "pre-commit>=4.0",
+  "pre-commit>=4.7.0",
   # not ruff: it runs from the shared lint hooks (prek), at one pinned version
 ]
 
