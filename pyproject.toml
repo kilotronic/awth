@@ -38,7 +38,7 @@ Issues = "https://github.com/kilotronic/awth/issues"
 server = ["Flask>=3.1.0", "flask-cors>=4.0.0"]
 dev = [
   "awth[server]",
-  "pytest>=9.0",
+  "pytest>=9.2.0",
   "pytest-cov>=7.0",
   "pre-commit>=4.0",
   # not ruff: it runs from the shared lint hooks (prek), at one pinned version
