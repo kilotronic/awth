@@ -30,8 +30,8 @@ uv run pre-commit run ruff-check --all-files    # lint
 uv run pre-commit run ruff-format --all-files   # format
 ```
 
-ruff comes from the shared kilotronic/lint hooks, so it is the same version on every machine and in CI.
-`pre-commit` runs `ruff`, `ruff-format`, and `pytest` automatically, plus a
+ruff comes from the shared kilotronic/lint hooks, so it is the same version on every machine
+and in CI. `pre-commit` runs `ruff-check`, `ruff-format`, and `pytest` automatically, plus a
 local-image build hook. You can run the full set at any time with:
 
 ```bash
